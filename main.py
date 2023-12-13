@@ -18,18 +18,31 @@ SPACE_CHAR = "_"
 SERVER_TIME_OFFSET = 8
 
 # Functions
-def generate_filename(title: str, id: int):
+def generate_filename(title: str, id: int | None):
+    if id == None:
+        return title.replace(" ", SPACE_CHAR) + ".md"
     return title.replace(" ", SPACE_CHAR) + "_ID:" + str(id) + ".md"
 
 def get_id_from_filename(filename: str):
-    return int(filename.split("_ID:")[1].split(".")[0])
+    try:
+        return int(filename.split("_ID:")[1].split(".")[0])
+    except:
+        return None
 
 def get_title_from_filename(filename: str):
-    return filename.split("_ID:")[0].replace(SPACE_CHAR, " ")
+    try:
+        if "_ID:" not in filename:
+            return filename.split(".md")[0].replace(SPACE_CHAR, " ")
+        return filename.split("_ID:")[0].replace(SPACE_CHAR, " ")
+    except:
+        return filename.split(".md")[0].replace(SPACE_CHAR, " ")
 
 def get_content_from_note_file(filename: str):
-    with open(LOCAL_NOTES_PATH + filename, "r") as f:
-        return f.read()
+    try:
+        with open(LOCAL_NOTES_PATH + filename, "r") as f:
+            return f.read()
+    except:
+        return ""
 
 def dateify_str(date_str: str):
     return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
@@ -135,11 +148,19 @@ def sync_notes():
         notes_to_upload = []
         for note in local_notes:
             note_in_server = get_note_from_list(notes_in_server, note["id"])
+            if note.get("id") == None:
+                r = requests.post(API_URL + "add-note", json={"username": API_USERNAME, "password": API_PASSWORD, "title": note["title"], "content": note["content"], "category": ""})
+                res = r.json()
+                if res.get("success", False) == True:
+                    print(f"Local note '{note.get('title')}' uploaded to server successfully.")
+                    note.update({"id": res["note"]["id"]})
+                    os.rename(LOCAL_NOTES_PATH + generate_filename(title=note["title"], id=None), LOCAL_NOTES_PATH + generate_filename(title=note["title"], id=note["id"]))
+                    continue
             if note_in_server == None:
                 notes_to_upload.append(note)
             else:
-                print(note["last_edited"])
-                print(dateify_server_str(note_in_server["date_last_changed"]))
+                print(f"Local last edited time: {note['last_edited']}")
+                print(f"Server last edited time: {dateify_server_str(note_in_server['date_last_changed'])}")
                 if note["last_edited"] > dateify_server_str(note_in_server["date_last_changed"]) and last_synced > dateify_server_str(note_in_server["date_last_changed"]):
                     notes_to_upload.append(note)
         print(f"Found {len(notes_to_upload)} notes to upload.")
@@ -184,6 +205,8 @@ def sync_notes():
         with open(LOCAL_NOTES_PATH + ".flasky-status", "w") as f:
             f.write("last_synced: " + stringify_date(datetime.now()) + "\n")
             f.write("last_synced_note_count: " + str(len(notes_in_server)) + "\n")
+        print("Updated local status file.")
+
 
 if __name__ == "__main__":
     app()
