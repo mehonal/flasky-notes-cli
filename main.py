@@ -13,7 +13,7 @@ app = Typer()
 ROOT_DOMAIN = "example.com"
 WEB_URL = f"https://{ROOT_DOMAIN}/"
 API_URL = f"https://{ROOT_DOMAIN}/api/external/"
-LOCAL_NOTES_PATH = "/enter/local/path/here"
+LOCAL_NOTES_PATH = "/enter/local/path/here/"
 SPACE_CHAR = "_"
 SERVER_TIME_OFFSET = 8
 
